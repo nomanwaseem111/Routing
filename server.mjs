@@ -1,22 +1,22 @@
 import express from 'express'
 import cors from 'cors'
-import {stringToHash,varifyHash} from "bcrypt-inzi"
+import { stringToHash, varifyHash } from "bcrypt-inzi"
 import mongoose from 'mongoose'
 const app = express()
 app.use(express.json())
 app.use(cors())
-const port = process.env.PORT || 3001
+const port = process.env.PORT || 5002
 
 const userSchema = new mongoose.Schema({
-    firstName: {type : String, required:true},
-    lastName: {type : String, required:true},
-    email: {type : String, required:true},
-    password: {type : String, required:true},
-    createdOn: {type : Date, default:Date.now()}
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true },
+    password: { type: String, required: true },
+    createdOn: { type: Date, default: Date.now() }
 });
 
 
-  const userModel = mongoose.model('User', userSchema);
+const userModel = mongoose.model('User', userSchema);
 
 
 
@@ -25,63 +25,60 @@ app.post('/signup', (req, res) => {
 
     let body = req.body
 
-    if(!body.firstName ||!body.lastName ||!body.email ||!body.password){
+    if (!body.firstName || !body.lastName || !body.email || !body.password) {
         res.status(400).send(`Please Fill all Required Fields`)
         return
     }
 
+    userModel.findOne({ email: body.email }, (err, data) => {
 
-    userModel.findOne({email:body.email} , (err,data) => {
+        if (!err) {
 
-        if(!err){
-  
-            console.log("data" , data);
+            if (data) {//user already exist
+                console.log("User Already Exist", data);
+                res.status(401).send({ message: "User already Exist" });
+                return
+            } else {
 
-            if(data){ //User already Exist
-               console.log("User is Already Exits", data);
-               res.status(400).send({message : "User is Already Exist"})
-               return;
-                 
-            }else{
 
                 stringToHash(body.password).then(hashString => {
 
-                      let newUser = new userModel ({
+                    let newUser = new userModel({
 
-                        firstName : body.firstName,
-                        firstName : body.lastName,
+                        firstName: body.firstName,
+                        lastName: body.lastName,
                         email: body.email.toLowerCase(),
-                        password : hashString
-                     })
-                     newUser.save((err,result) => {
-                     
-                        if(!err){
+                        password: hashString
+                    })
+                    newUser.save((err, result) => {
 
-                            console.log("Data Saved", result);
-                            res.status(201).send({message : "User is Signup"})
-
-                        }else{
-                           console.log("db error", err);
-                           res.status(500).send({message : "db error in saving data"})
-                           return
+                        if (!err) {
+                            console.log("user signup", result);
+                            res.status(201).send({ message: "User signup" })
+                            return;
+                        } else {
+                            console.log("db error", err);
+                            res.status(500).send({ message: "db error in saving data" })
+                            return
                         }
-                         
-                   })
-
 
                     })
-         }
-             
-        }else{
-            console.log("db error" ,err );
-            res.status(500).send({message : "Internal Server Error"})
-            return
+
+
+                })
+
+
+            }
+
+        } else {
+            console.log("db error", err);
+            res.status(500).send({ message: "Internal Server error" })
         }
 
     })
 
 
-  
+
 })
 
 
@@ -90,55 +87,55 @@ app.post('/login', (req, res) => {
 
     let body = req.body
 
-    if(!body.email ||!body.password){
+    if (!body.email || !body.password) {
         res.status(400).send(`Please Fill all Required Fields`)
         return
     }
 
 
-      userModel.findOne({email:body.email}, (err,data) => {
+    userModel.findOne({ email: body.email }, (err, data) => {
 
 
-       if(!err){
+        if (!err) {
 
-          console.log("data", data);
-         
-            if(data){ //user found
-   
-                varifyHash(body.email,data.email).then(isMatched => {
-                   
+            console.log("data", data);
+
+            if (data) {
+
+
+                varifyHash(body.password,data.password).then(isMatched => {
+                    
                     if(isMatched){
-                        console.log("Login Successful");
-                        res.status(201).send({message : "Login Successful"})
-                        return;
+                        console.log("User Login");
+                        res.status(201).send({message: "User Login"})
+                        return
                     }else{
-                        console.log("Login Fail");
-                        res.status(401).send({message: "Incorrect email and password"})
+                    res.status(401).send({message: "Incorrect Email and Password"})
+                    return
                     }
-
                 })
-                 
-            }else{ // user not found
+
+            } else {
+
                 console.log("User not Found");
-                res.status(401).send({message: "Incorrect email and password"})
+                res.status(401).send({ message: "Incorrect Email and Password" })
+                return
+
             }
-         
-       }else{
-        console.log("db error", err);
-        res.status(500).send({message: "Internal server error"})
-        return;
-
-       }
 
 
-      })
+        } else {
+            console.log("db error ", err);
+            res.status(500).send({ message: "login fail try later" })
+        }
 
-  
+    })
+
 })
 
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+    console.log(`Example app listening on port ${port}`)
 })
 
 
